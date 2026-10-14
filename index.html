@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Halloween-bingo</title>
+<style>
+  :root{
+    --bg1:#0d0716; --bg2:#1d0f33; --panel:#1a0f2c; --panel2:#251540;
+    --ink:#f4efff; --muted:#bfb0e0; --orange:#ff7a18; --gold:#ffd166; --green:#7cfc00; --purple:#8b3dff;
+    --line:rgba(255,255,255,.18);
+    --imgbg:radial-gradient(circle at 50% 42%, #c9a3ff 0%, #9560e6 38%, #5a2aa8 72%, #331069 100%);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:radial-gradient(1200px 700px at 70% -10%, #3a1670 0%, transparent 60%),
+               radial-gradient(900px 600px at 0% 110%, #3b1205 0%, transparent 55%),
+               linear-gradient(160deg,var(--bg2),var(--bg1));
+    color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overflow:hidden; user-select:none;
+  }
+  .hidden,[hidden]{display:none !important}
+  button{font:inherit;color:inherit;cursor:pointer}
+  button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+
+  .btn{
+    border:0;border-radius:16px;padding:14px 28px;font-weight:800;letter-spacing:.02em;
+    background:linear-gradient(180deg,#ff9a3c,var(--orange));color:#2a0f00;
+    box-shadow:0 6px 0 #a24a00,0 12px 30px rgba(255,122,24,.35);
+    transition:transform .08s, box-shadow .08s, filter .2s;
+  }
+  .btn:hover{filter:brightness(1.08)}
+  .btn:active{transform:translateY(4px);box-shadow:0 2px 0 #a24a00,0 6px 16px rgba(255,122,24,.3)}
+  .btn:disabled{filter:grayscale(.8) brightness(.6);cursor:not-allowed;transform:none;box-shadow:0 6px 0 #4a3a30}
+  .btn.big{font-size:clamp(22px,2.6vw,34px);padding:16px 44px;min-width:min(420px,100%)}
+  .btn.ghost{background:transparent;color:var(--ink);box-shadow:none;border:2px solid var(--line);padding:10px 18px;font-weight:600}
+  .btn.ghost:hover{border-color:var(--gold)}
+  .btn.purple{background:linear-gradient(180deg,#a366ff,var(--purple));color:#fff;box-shadow:0 6px 0 #4a1a99,0 12px 30px rgba(139,61,255,.35)}
+
+  /* ---------- Startskjerm ---------- */
+  #start{height:100%;display:grid;place-items:center;padding:24px;position:relative}
+  #start .moon{position:absolute;right:8%;top:8%;width:18vmin;height:18vmin;border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,#fff7d6,#f3d98b 60%,#cfa94a);opacity:.9;box-shadow:0 0 80px 20px rgba(255,220,130,.25)}
+  .startBox{text-align:center;max-width:900px;width:100%;position:relative;z-index:1}
+  .logo{font-family:Georgia,"Times New Roman",serif;font-weight:900;font-style:italic;
+    font-size:clamp(64px,13vw,170px);line-height:1;margin:0;letter-spacing:.04em;
+    background:linear-gradient(180deg,#ffd166,#ff7a18 60%,#c2410c);-webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 30px rgba(255,122,24,.45))}
+  .tag{color:var(--muted);font-size:clamp(16px,1.8vw,22px);margin:6px 0 28px}
+  .loader{background:rgba(255,255,255,.05);border:2px dashed var(--line);border-radius:20px;padding:20px;margin:0 auto 26px;max-width:760px}
+  .loader.drag{border-color:var(--gold);background:rgba(255,209,102,.08)}
+  .loader .row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;align-items:center}
+  #loadInfo{margin:12px 0 0;color:var(--muted);font-size:16px}
+  #thumbs{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:14px;max-height:110px;overflow:auto}
+  #thumbs img{width:44px;height:44px;object-fit:contain;background:var(--imgbg);border-radius:8px;border:2px solid var(--line)}
+  #startBtn{font-size:clamp(24px,3vw,38px);padding:18px 64px}
+
+  /* ---------- Spillskjerm ---------- */
+  #game{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:10px;padding:10px 16px}
+  .strip{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:6px;max-width:calc(var(--cols) * 104px + (var(--cols) - 1) * 6px)}
+  .slot{aspect-ratio:1;border-radius:9px;border:2px dashed rgba(255,255,255,.16);position:relative;overflow:hidden;background:rgba(255,255,255,.03)}
+  .slot.filled{border:2px solid var(--orange);background:var(--imgbg);box-shadow:0 0 10px rgba(255,122,24,.25)}
+  .slot img{width:100%;height:100%;object-fit:contain;display:block}
+  .slot .n{position:absolute;right:3px;bottom:2px;font-size:11px;font-weight:700;color:var(--muted);text-shadow:0 1px 2px #000;line-height:1}
+  .slot.filled .n{color:#fff;background:rgba(0,0,0,.55);padding:1px 4px;border-radius:6px}
+
+  .mid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:20px;min-height:0}
+  .stageCol{display:flex;flex-direction:column;min-height:0;gap:10px}
+  .stage{flex:1;min-height:0;position:relative;container-type:size;display:grid;place-items:center}
+  #cardWrap{width:min(96cqw,96cqh);aspect-ratio:1;position:relative;opacity:0;visibility:hidden}
+  #card{width:100%;height:100%;border-radius:22px;border:5px solid var(--orange);background:var(--imgbg);overflow:hidden;
+    box-shadow:0 0 0 4px rgba(255,122,24,.2),0 0 60px rgba(255,122,24,.45),0 20px 50px rgba(0,0,0,.6)}
+  #card img{width:100%;height:100%;object-fit:contain;display:block}
+  .overlayMsg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px}
+  .overlayMsg .inner{max-width:640px}
+  .overlayMsg .big{font-size:clamp(28px,4.4vw,60px);font-weight:900;font-family:Georgia,serif;font-style:italic;color:var(--gold)}
+  .overlayMsg .small{font-size:clamp(16px,1.8vw,24px);color:var(--muted);margin-top:8px}
+  .controls{display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap;padding-bottom:2px}
+  #count{font-size:clamp(16px,1.6vw,22px);color:var(--muted);font-variant-numeric:tabular-nums;min-width:170px;text-align:right}
+  #count b{color:var(--ink);font-size:1.3em}
+
+  .goals{background:linear-gradient(180deg,var(--panel2),var(--panel));border:2px solid var(--line);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px;min-height:0}
+  .goals h2{margin:0;font-family:Georgia,serif;font-style:italic;font-size:26px;color:var(--gold);text-align:center}
+  .goals .hint{margin:-6px 0 0;text-align:center;color:var(--muted);font-size:14px}
+  .goal{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;text-align:left;
+    background:rgba(255,255,255,.06);border:2px solid var(--line);border-radius:16px;padding:12px 14px;transition:transform .1s,border-color .2s,background .2s}
+  .goal:hover{border-color:var(--gold);transform:translateY(-1px)}
+  .goal .mini{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;width:72px;height:72px}
+  .goal .mini i{border-radius:2px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.1)}
+  .goal .mini i.on{background:var(--orange);border-color:#ffb36b;box-shadow:0 0 8px rgba(255,122,24,.7)}
+  .goal .prize{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--orange)}
+  .goal .title{font-size:22px;font-weight:800;line-height:1.15}
+  .goal .state{font-size:14px;color:var(--muted);margin-top:2px}
+  .goal.done{background:linear-gradient(135deg,rgba(124,252,0,.18),rgba(255,209,102,.16));border-color:var(--green)}
+  .goal.done .mini i.on{background:var(--green);border-color:#d6ffa8;box-shadow:0 0 8px rgba(124,252,0,.7)}
+  .goal.done .prize{color:var(--green)}
+  .goal.done .state{color:#d9ffb0;font-weight:700}
+  .goals .spacer{flex:1}
+
+  /* ---------- FX / animasjoner ---------- */
+  #fx{position:fixed;inset:0;pointer-events:none;z-index:50;overflow:hidden}
+  #fx .abs{position:absolute;left:0;top:0;will-change:transform}
+  .flash{position:absolute;inset:0;background:#efe8ff;opacity:0}
+  .bolt{position:absolute;left:50%;top:50%;margin:-22vmin 0 0 -11vmin;font-size:44vmin;line-height:1;opacity:0;filter:drop-shadow(0 0 40px #b9a0ff)}
+  .thread{position:absolute;bottom:100%;left:50%;width:3px;margin-left:-1.5px;height:140vh;background:linear-gradient(#ffffff55,#ffffffcc)}
+  .spider{position:absolute;left:50%;top:-30px;margin-left:-.5em;font-size:46px;line-height:1}
+  .fog{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(220,230,255,.55),rgba(220,230,255,0) 68%);filter:blur(6px)}
+  .bubble{position:absolute;border-radius:50%;background:radial-gradient(circle at 30% 30%,#e6ffc2,#7cfc00 45%,#2c8a00);opacity:.85;box-shadow:0 0 16px rgba(124,252,0,.7)}
+  .glow{position:absolute;left:0;right:0;bottom:0;height:45vh;background:linear-gradient(to top,rgba(124,252,0,.5),transparent)}
+  .wisp{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(170,255,120,.4),rgba(170,255,120,0) 70%);filter:blur(5px)}
+  .bigbubble{position:absolute;border-radius:50%;border:3px solid rgba(225,255,190,.75);
+    background:radial-gradient(circle at 30% 26%,rgba(255,255,255,.8) 0,rgba(255,255,255,.22) 7%,rgba(255,255,255,0) 18%),
+               radial-gradient(circle at 50% 50%,rgba(124,252,0,.06) 55%,rgba(124,252,0,.32) 90%,rgba(225,255,190,.7) 100%);
+    box-shadow:0 0 40px rgba(124,252,0,.55),inset 0 0 40px rgba(124,252,0,.35)}
+  .emo{position:absolute;line-height:1;display:grid;place-items:center}
+
+  .flycard{position:fixed;z-index:60;transform-origin:0 0;border-radius:22px;border:5px solid var(--orange);background:var(--imgbg);overflow:hidden;
+    box-shadow:0 0 60px rgba(255,122,24,.5);pointer-events:none}
+  .flycard img{width:100%;height:100%;object-fit:contain;display:block}
+
+  /* ---------- Celebration ---------- */
+  #celebrate{position:fixed;inset:0;z-index:100;background:radial-gradient(circle,rgba(20,8,40,.55),rgba(5,2,12,.8));cursor:pointer;transition:opacity .4s}
+  #celebrate.out{opacity:0}
+  #celebrate canvas{position:absolute;inset:0;width:100%;height:100%}
+  .celText{position:absolute;inset:0;display:grid;place-content:center;text-align:center;pointer-events:none}
+  .celText .b{font-family:Georgia,serif;font-style:italic;font-weight:900;font-size:clamp(70px,16vw,220px);line-height:1;
+    background:linear-gradient(180deg,#fff3b0,#ffd166 45%,#ff7a18);-webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 40px rgba(255,160,40,.8));animation:pop .7s cubic-bezier(.2,1.6,.4,1) both, pulse 1.2s .7s ease-in-out infinite}
+  .celText .g{font-size:clamp(26px,4.5vw,64px);font-weight:800;margin-top:10px;animation:rise .6s .35s both}
+  .celText .s{font-size:clamp(16px,2vw,26px);color:var(--muted);margin-top:8px;animation:rise .6s .5s both}
+  @keyframes pop{from{transform:scale(0) rotate(-10deg)}to{transform:scale(1) rotate(0)}}
+  @keyframes pulse{50%{transform:scale(1.06)}}
+  @keyframes rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+
+  /* ---------- Modal ---------- */
+  #modal{position:fixed;inset:0;z-index:200;background:rgba(5,2,12,.72);display:grid;place-items:center}
+  .dlg{background:var(--panel2);border:2px solid var(--line);border-radius:20px;padding:28px;max-width:460px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .dlg h3{margin:0 0 8px;font-size:26px;font-family:Georgia,serif;color:var(--gold)}
+  .dlg p{margin:0 0 20px;color:var(--muted);font-size:17px;line-height:1.4}
+  .dlg .row{display:flex;gap:12px;justify-content:center}
+
+  @media (prefers-reduced-motion:reduce){ .celText .b{animation:pop .3s both} }
+</style>
+</head>
+<body>
+
+<!-- ============ STARTSKJERM ============ -->
+<section id="start">
+  <div class="moon" aria-hidden="true"></div>
+  <div class="startBox">
+    <h1 class="logo">BINGO</h1>
+    <p class="tag">Trekningsmotor – spillerne har brettene sine på papir</p>
+
+    <div class="loader" id="loader">
+      <div class="row">
+        <button class="btn ghost" id="pickBtn" type="button">Bruk egne bilder i stedet …</button>
+                <button class="btn ghost" id="clearBtn" type="button" hidden>Tilbake til standardbildene</button>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" multiple hidden>
+      <p id="loadInfo">Velg alle bildene som skal kunne trekkes (eller dra dem hit). Hvert bilde trekkes maks én gang.</p>
+      <div id="thumbs"></div>
+    </div>
+
+    <button class="btn" id="startBtn" type="button" disabled>Start bingoen</button>
+  </div>
+</section>
+
+<!-- ============ SPILLSKJERM ============ -->
+<section id="game" class="hidden">
+  <div class="strip" id="topStrip" aria-label="Trukne bilder, øvre linje"></div>
+
+  <div class="mid">
+    <div class="stageCol">
+      <div class="stage" id="stage">
+        <div id="idle" class="overlayMsg"><div class="inner">
+          <div class="big">Klar for trekning</div>
+          <div class="small">Trykk «Start trekning» for å avsløre det første bildet</div>
+        </div></div>
+        <div id="cardWrap"><div id="card"><img id="cardImg" alt="Trukket bilde"></div></div>
+        <div id="finished" class="overlayMsg" hidden><div class="inner">
+          <div class="big">Alle bildene er trukket</div>
+          <div class="small">Trykk «Start på nytt» for en ny runde</div>
+        </div></div>
+      </div>
+      <div class="controls">
+        <div id="count"></div>
+        <button class="btn big" id="nextBtn" type="button">Start trekning</button>
+      </div>
+    </div>
+
+    <aside class="goals" aria-label="Premier">
+      <h2>Premier</h2>
+      <p class="hint">Trykk på et mål når noen har ropt bingo</p>
+      <div id="goalList" style="display:flex;flex-direction:column;gap:12px"></div>
+      <div class="spacer"></div>
+      <button class="btn ghost" id="restartBtn" type="button">↺ Start på nytt</button>
+    </aside>
+  </div>
+
+  <div class="strip" id="bottomStrip" aria-label="Trukne bilder, nedre linje"></div>
+</section>
+
+<div id="fx" aria-hidden="true"></div>
+
+<div id="celebrate" hidden><canvas></canvas>
+  <div class="celText"><div class="b">BINGO!</div><div class="g" id="celGoal"></div><div class="s">Trykk for å lukke</div></div>
+</div>
+
+<div id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="dlg">
+    <h3 id="mTitle">Start på nytt?</h3>
+    <p>Trekningen og alle markerte mål nullstilles. Bildene du har lastet beholdes.</p>
+    <div class="row">
+      <button class="btn ghost" id="mCancel" type="button">Avbryt</button>
+      <button class="btn" id="mOk" type="button">Ja, start på nytt</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   BINGO-MOTOR
+   - Bildene lastes i nettleseren (ingenting sendes noe sted).
+   - Animasjonene for å avsløre bilder ligger i ANIMASJONER lenger ned.
+     Legg til en ny ved å legge til en ny nøkkel + funksjon der.
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const rand = (a, b) => a + Math.random() * (b - a);
+const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt) e.textContent = txt; return e; };
+
+/* ---------- State ---------- */
+let images = [];            // {id, src, name}
+let queue = [], drawn = [], current = null;
+let busy = false, celebrating = false, finished = false;
+let slots = [];
+let lastAnim = null;
+
+const GOALS = [
+  { id: 'one',  prize: 'Premie 1', title: '1 hel linje',   rows: 1 },
+  { id: 'two',  prize: 'Premie 2', title: '2 hele linjer', rows: 2 },
+  { id: 'full', prize: 'Premie 3', title: 'Hele brettet',  rows: 5 },
+];
+const goalState = {};
+
+/* ---------- Startskjerm: laste bilder ---------- */
+const fileInput = $('#fileInput');
+$('#pickBtn').onclick = () => fileInput.click();
+fileInput.onchange = () => { addFiles(fileInput.files); fileInput.value = ''; };
+$('#clearBtn').onclick = () => { images = defaultImages(); renderLoader(); };
+const loader = $('#loader');
+['dragenter','dragover'].forEach(t => loader.addEventListener(t, e => { e.preventDefault(); loader.classList.add('drag'); }));
+['dragleave','drop'].forEach(t => loader.addEventListener(t, e => { e.preventDefault(); loader.classList.remove('drag'); }));
+loader.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+
+async function addFiles(list){
+  const files = [...list].filter(f => f.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|avif|bmp|svg)$/i.test(f.name))
+    .sort((a, b) => a.name.localeCompare(b.name, 'nb', { numeric: true }));
+  $('#loadInfo').textContent = 'Laster bilder …';
+  let failed = 0;
+  if (images.every(i => i.std)) images = [];
+  for (const f of files) {
+    try { images.push({ id: 'f' + Math.random().toString(36).slice(2), src: await fileToDataUrl(f), name: f.name }); }
+    catch (e) { console.warn('Kunne ikke lese', f.name, e); failed++; }
+  }
+  renderLoader();
+  if (failed) $('#loadInfo').textContent += ` (${failed} fil${failed === 1 ? '' : 'er'} kunne ikke leses som bilde.)`;
+}
+/* Leser filen som data-URL (virker også der blob:-adresser blokkeres) og skalerer ned store bilder. */
+function fileToDataUrl(file){
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onerror = () => reject(fr.error);
+    fr.onload = () => {
+      const raw = fr.result, im = new Image();
+      im.onerror = () => reject(new Error('ugyldig bilde'));
+      im.onload = () => {
+        try {
+          const MAX = 900, k = Math.min(1, MAX / Math.max(im.naturalWidth, im.naturalHeight));
+          if (k === 1 && raw.length < 600000) return resolve(raw);
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k));
+          c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+          resolve(/jpe?g/i.test(file.type) ? c.toDataURL('image/jpeg', .9) : c.toDataURL('image/png'));
+        } catch (e) { resolve(raw); }
+      };
+      im.src = raw;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+function renderLoader(){
+  const n = images.length;
+  $('#startBtn').disabled = n < 1;
+  $('#clearBtn').hidden = !images.length || images.every(i => i.std);
+  $('#loadInfo').textContent = n
+    ? `${n} bilde${n === 1 ? '' : 'r'} klar til trekning.`
+    : 'Ingen bilder funnet. Velg bildefiler eller dra dem hit.';
+  const t = $('#thumbs'); t.replaceChildren();
+  images.forEach(i => { const im = new Image(); im.src = i.src; im.alt = i.name; t.append(im); });
+}
+function makeDemo(){
+  const em = ['🎃','👻','🕷️','🕸️','🦇','💀','☠️','🧙','🧛','🧟','🧞','🔮','🕯️','🍬','🍭','🍫','🌙','🦉','🐈‍⬛','🪦','⚰️','🧪','🍎','🪄','🧹','🐸','🦴','👹','👺','👽','🤡','🩸','🍄','🌕','🥀','🕰️'];
+  images = em.map((e, i) => {
+    const c = document.createElement('canvas'); c.width = c.height = 320;
+    const x = c.getContext('2d'), h = (i * 37) % 360;
+    const g = x.createLinearGradient(0, 0, 320, 320);
+    g.addColorStop(0, `hsl(${h},55%,28%)`); g.addColorStop(1, `hsl(${(h + 50) % 360},60%,14%)`);
+    x.fillStyle = g; x.fillRect(0, 0, 320, 320);
+    x.font = '190px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(e, 160, 172);
+    return { id: 'demo' + i, src: c.toDataURL('image/png'), name: 'demo ' + (i + 1) };
+  });
+  renderLoader();
+}
+
+/* ---------- Start / bygg spillskjerm ---------- */
+$('#startBtn').onclick = startGame;
+
+function shuffle(a){ for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function startGame(){
+  queue = shuffle(images.slice());
+  drawn = []; current = null; busy = false; finished = false;
+  lastAnim = null;
+  buildStrips();
+  buildGoals();
+  $('#start').classList.add('hidden');
+  $('#game').classList.remove('hidden');
+  resetStage();
+  updateUI();
+}
+function buildStrips(){
+  const N = images.length, cols = Math.ceil(N / 2), bottomN = N - cols;
+  slots = [];
+  [['#topStrip', cols, 0], ['#bottomStrip', bottomN, cols]].forEach(([sel, count, offset]) => {
+    const el = $(sel); el.replaceChildren();
+    el.style.setProperty('--cols', cols);
+    el.hidden = count === 0;
+    for (let i = 0; i < count; i++) {
+      const s = mk('div', 'slot'); s.append(mk('span', 'n', String(offset + i + 1)));
+      el.append(s); slots.push(s);
+    }
+  });
+}
+function resetStage(){
+  const w = $('#cardWrap');
+  w.getAnimations().forEach(a => a.cancel());
+  w.style.visibility = 'hidden'; w.style.opacity = 0; w.style.filter = '';
+  $('#fx').replaceChildren();
+}
+
+/* ---------- Mål / premier ---------- */
+function buildGoals(){
+  const list = $('#goalList'); list.replaceChildren();
+  GOALS.forEach(g => {
+    goalState[g.id] = false;
+    const b = mk('button', 'goal'); b.type = 'button'; b.dataset.id = g.id; b.setAttribute('aria-pressed', 'false');
+    const mini = mk('div', 'mini');
+    for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) mini.append(mk('i', r < g.rows ? 'on' : ''));
+    const t = mk('div');
+    t.innerHTML = `<div class="prize">${g.prize}</div><div class="title">${g.title}</div><div class="state">Ikke nådd ennå</div>`;
+    b.append(mini, t);
+    b.onclick = () => toggleGoal(g, b);
+    list.append(b);
+  });
+}
+function toggleGoal(g, btn){
+  if (celebrating) return;
+  const on = !goalState[g.id];
+  goalState[g.id] = on;
+  btn.classList.toggle('done', on);
+  btn.setAttribute('aria-pressed', on);
+  btn.querySelector('.state').textContent = on ? '✓ Nådd – premie delt ut' : 'Ikke nådd ennå';
+  if (on) celebrate(g);
+}
+
+/* ---------- Neste ---------- */
+$('#nextBtn').onclick = next;
+document.addEventListener('keydown', e => {
+  if ((e.key === ' ' || e.key === 'Enter') && !$('#game').classList.contains('hidden') && $('#modal').hidden) {
+    const b = e.target.closest && e.target.closest('button');
+    if (b && b !== $('#nextBtn')) return;
+    e.preventDefault(); next();
+  }
+});
+
+function updateUI(){
+  const shown = drawn.length + (current ? 1 : 0), N = images.length;
+  $('#count').innerHTML = `Trukket <b>${shown}</b> av ${N}`;
+  const btn = $('#nextBtn');
+  btn.disabled = busy || celebrating || finished;
+  btn.textContent = finished ? 'Alle bilder er trukket'
+    : (!current && drawn.length === 0) ? 'Start trekning'
+    : (current && queue.length === 0) ? 'Ferdig ✓'
+    : 'Neste ▶';
+  $('#idle').hidden = !!current || finished || drawn.length > 0;
+  $('#finished').hidden = !finished;
+}
+
+async function next(){
+  if (busy || celebrating || finished) return;
+  busy = true; updateUI();
+  try {
+    if (current) {
+      await slideToSlot();
+      if (queue.length === 0) { finished = true; busy = false; updateUI(); return; }
+    }
+    const item = queue.pop();
+    current = item;
+    $('#idle').hidden = true;
+    await reveal(item);
+  } finally { busy = false; updateUI(); }
+}
+
+async function slideToSlot(){
+  const wrap = $('#cardWrap'), slot = slots[drawn.length];
+  const from = wrap.getBoundingClientRect(), to = slot.getBoundingClientRect();
+  const fly = mk('div', 'flycard');
+  const im = new Image(); im.src = current.src; fly.append(im);
+  Object.assign(fly.style, { left: from.left + 'px', top: from.top + 'px', width: from.width + 'px', height: from.height + 'px' });
+  document.body.append(fly);
+  wrap.style.visibility = 'hidden';
+  const s = to.width / from.width, dx = to.left - from.left, dy = to.top - from.top;
+  await fly.animate([
+    { transform: 'translate(0,0) scale(1)' },
+    { transform: `translate(${dx}px,${dy}px) scale(${s})` }
+  ], { duration: 1000, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' }).finished;
+  const img2 = new Image(); img2.src = current.src; img2.alt = '';
+  slot.classList.add('filled'); slot.prepend(img2);
+  fly.remove();
+  drawn.push(current); current = null;
+}
+
+/* ---------- Avsløring ---------- */
+async function reveal(item){
+  const wrap = $('#cardWrap'), img = $('#cardImg'), fx = $('#fx');
+  wrap.getAnimations().forEach(a => a.cancel());
+  wrap.style.opacity = 0; wrap.style.filter = ''; wrap.style.visibility = 'visible';
+  img.src = item.src;
+  try { await img.decode(); } catch (e) {}
+  const keys = Object.keys(ANIMASJONER);
+  const forced = new URLSearchParams(location.hash.slice(1)).get('anim');
+  let key = keys.includes(forced) ? forced : null;
+  if (!key) { do { key = keys[Math.floor(Math.random() * keys.length)]; } while (key === lastAnim && keys.length > 1); }
+  lastAnim = key;
+  const ctx = { wrap, fx, W: innerWidth, H: innerHeight, rect: wrap.getBoundingClientRect() };
+  try { await ANIMASJONER[key](ctx); } catch (e) { console.error(e); }
+  // Sikre endelig tilstand uansett hva animasjonen gjorde
+  wrap.getAnimations().forEach(a => a.cancel());
+  wrap.style.opacity = 1; wrap.style.filter = ''; wrap.style.visibility = 'visible';
+  fx.replaceChildren();
+}
+
+/* =====================================================================
+   ANIMASJONER – hver tar imot {wrap, fx, W, H, rect} og returnerer et
+   Promise som er ferdig når bildet er helt synlig. Sett wrap.style.opacity = 1
+   når bildet skal bli synlig. fx er et fullskjermslag for effekter.
+   ===================================================================== */
+const ANIMASJONER = {
+
+  /* Lynet slår ned og bildet blinker frem */
+  lyn: async c => {
+    const flash = mk('div', 'flash'), bolt = mk('div', 'bolt', '⚡');
+    c.fx.append(bolt, flash);
+    const kf = [{opacity:0},{opacity:.95,offset:.08},{opacity:.1,offset:.18},{opacity:.85,offset:.3},{opacity:0,offset:.5},{opacity:.6,offset:.58},{opacity:0}];
+    const f = flash.animate(kf, { duration: 1100 });
+    bolt.animate([{opacity:0},{opacity:1,offset:.1},{opacity:0,offset:.4},{opacity:.8,offset:.58},{opacity:0}], { duration: 1100 });
+    await wait(330);
+    c.wrap.style.opacity = 1;
+    await Promise.all([
+      c.wrap.animate([
+        { transform:'scale(1.18)', filter:'brightness(4) saturate(0)' },
+        { transform:'scale(1)', filter:'brightness(1.3)', offset:.35 },
+        { transform:'translateX(-9px)' }, { transform:'translateX(9px)' }, { transform:'translateX(-4px)' },
+        { transform:'none', filter:'none' }
+      ], { duration: 850, easing: 'ease-out' }).finished,
+      f.finished
+    ]);
+  },
+
+  /* Edderkopp firer ned bildet i en tråd */
+  edderkopp: async c => {
+    const thread = mk('div', 'thread'), spider = mk('div', 'spider', '🕷️');
+    c.wrap.append(thread, spider);
+    c.wrap.style.opacity = 1;
+    await c.wrap.animate([
+      { transform:'translateY(-130vh)', easing:'cubic-bezier(.5,0,.9,.6)' },
+      { transform:'translateY(0)', offset:.55, easing:'cubic-bezier(.2,.6,.4,1)' },
+      { transform:'translateY(-8%)', offset:.72, easing:'cubic-bezier(.5,0,.9,.6)' },
+      { transform:'translateY(0)', offset:.86, easing:'cubic-bezier(.2,.6,.4,1)' },
+      { transform:'translateY(-2.5%)', offset:.93, easing:'ease-in' },
+      { transform:'translateY(0)' }
+    ], { duration: 1800 }).finished;
+    await wait(350);
+    const up = [{ transform:'translateY(0)' }, { transform:'translateY(-140vh)' }];
+    await Promise.all([thread, spider].map(e => e.animate(up, { duration: 800, easing: 'ease-in', fill: 'forwards' }).finished));
+    thread.remove(); spider.remove();
+  },
+
+  /* Flaggermusflokk feier forbi og avslører bildet */
+  flaggermus: async c => {
+    const ps = [];
+    for (let i = 0; i < 20; i++) {
+      const b = mk('div', 'abs', '🦇'), y = rand(0, c.H - 100);
+      b.style.fontSize = rand(36, 96) + 'px'; b.style.top = y + 'px';
+      c.fx.append(b);
+      const d = rand(0, 1100), a = rand(30, 90);
+      ps.push(b.animate([
+        { transform:`translate(${c.W + 100}px,0) rotate(-10deg)` },
+        { transform:`translate(${c.W*.66}px,${-a}px) rotate(10deg)`, offset:.33 },
+        { transform:`translate(${c.W*.33}px,${a}px) rotate(-10deg)`, offset:.66 },
+        { transform:`translate(-220px,${-a}px) rotate(10deg)` }
+      ], { duration: rand(1500, 2600), delay: d, fill: 'backwards', easing: 'linear' }).finished);
+    }
+    await wait(800);
+    c.wrap.style.opacity = 1;
+    ps.push(c.wrap.animate([
+      { opacity:0, filter:'blur(26px)', transform:'scale(.85)' },
+      { opacity:1, filter:'blur(0)', transform:'scale(1)' }
+    ], { duration: 1100, easing: 'ease-out' }).finished);
+    await Promise.all(ps);
+  },
+
+  /* Tåke siver inn og spøkelser svever forbi */
+  spokelse: async c => {
+    const ps = [];
+    for (let i = 0; i < 8; i++) {
+      const f = mk('div', 'fog'), s = rand(.3, .6) * Math.min(c.W, c.H) * 1.3;
+      Object.assign(f.style, { width: s + 'px', height: s + 'px', left: rand(-5, 90) + '%', top: rand(0, 80) + '%' });
+      c.fx.append(f);
+      ps.push(f.animate([{ opacity:0, transform:'translateX(-60px)' },{ opacity:.7, offset:.45 },{ opacity:0, transform:'translateX(80px)' }],
+        { duration: rand(2200, 3000), delay: rand(0, 500), fill: 'backwards' }).finished);
+    }
+    [12, 50, 85].forEach((x, i) => {
+      const g = mk('div', 'abs', '👻'); g.style.fontSize = rand(60, 110) + 'px'; g.style.left = x + '%'; g.style.top = (c.H - 80) + 'px';
+      c.fx.append(g);
+      ps.push(g.animate([{ opacity:0, transform:'translateY(0) rotate(-8deg)' },{ opacity:.9, offset:.25 },{ opacity:0, transform:`translateY(${-c.H}px) rotate(8deg)` }],
+        { duration: 2600, delay: i * 250, fill: 'backwards', easing: 'ease-in-out' }).finished);
+    });
+    await wait(500);
+    c.wrap.style.opacity = 1;
+    ps.push(c.wrap.animate([
+      { opacity:0, transform:'translateY(50px) scale(.92)', filter:'blur(28px) brightness(2)' },
+      { opacity:1, transform:'none', filter:'none' }
+    ], { duration: 1600, easing: 'ease-out' }).finished);
+    await Promise.all(ps);
+  },
+
+  /* Gresskaret vokser, eksploderer i godteri – og bildet spretter frem */
+  gresskar: async c => {
+    const cx = c.rect.left + c.rect.width / 2, cy = c.rect.top + c.rect.height / 2, S = Math.min(c.W, c.H) * .3;
+    const p = mk('div', 'emo', '🎃');
+    Object.assign(p.style, { left: cx - S/2 + 'px', top: cy - S/2 + 'px', width: S + 'px', height: S + 'px', fontSize: S * .8 + 'px' });
+    c.fx.append(p);
+    await p.animate([
+      { transform:'scale(.1) rotate(-30deg)', opacity:0 },
+      { transform:'scale(1) rotate(8deg)', opacity:1, offset:.5 },
+      { transform:'scale(1.05) rotate(-8deg)', offset:.65 },
+      { transform:'scale(1.12) rotate(6deg)', offset:.8 },
+      { transform:'scale(1.3) rotate(0)' }
+    ], { duration: 1100, fill: 'forwards' }).finished;
+    const ps = [p.animate([{ transform:'scale(1.3)', opacity:1 },{ transform:'scale(3.2)', opacity:0 }], { duration: 350, fill: 'forwards' }).finished];
+    const set = ['🍬','🦇','✨','🎃','🕸️','🍭'];
+    for (let i = 0; i < 32; i++) {
+      const e = mk('div', 'emo', set[i % set.length]), a = rand(0, Math.PI * 2), d = rand(250, Math.min(c.W, c.H) * .75), sz = rand(30, 64);
+      Object.assign(e.style, { left: cx - sz/2 + 'px', top: cy - sz/2 + 'px', width: sz + 'px', height: sz + 'px', fontSize: sz * .85 + 'px' });
+      c.fx.append(e);
+      ps.push(e.animate([{ transform:'translate(0,0) scale(.4) rotate(0)', opacity:1 },
+        { transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px) scale(1) rotate(${rand(-360,360)}deg)`, opacity:0 }],
+        { duration: rand(800, 1200), easing: 'cubic-bezier(.1,.7,.3,1)', fill: 'forwards' }).finished);
+    }
+    c.wrap.style.opacity = 1;
+    ps.push(c.wrap.animate([
+      { transform:'scale(0) rotate(-14deg)' },
+      { transform:'scale(1.12) rotate(3deg)', offset:.65 },
+      { transform:'none' }
+    ], { duration: 800, easing: 'ease-out' }).finished);
+    await Promise.all(ps);
+  },
+
+  /* Giftige bobler stiger opp og bildet kommer opp av heksekjelen */
+  kjele: async c => {
+    const ps = [], glow = mk('div', 'glow');
+    c.fx.append(glow);
+    ps.push(glow.animate([{ opacity:0 },{ opacity:1, offset:.4 },{ opacity:0 }], { duration: 2600 }).finished);
+    for (let i = 0; i < 36; i++) {
+      const b = mk('div', 'bubble'), s = rand(12, 64);
+      Object.assign(b.style, { width: s + 'px', height: s + 'px', left: rand(0, 98) + '%', top: c.H + 20 + 'px' });
+      c.fx.append(b);
+      const w = rand(-40, 40);
+      ps.push(b.animate([{ transform:'translate(0,0)', opacity:.9 },{ transform:`translate(${w}px,${-c.H*.5}px)`, offset:.5 },{ transform:`translate(${-w}px,${-c.H-140}px)`, opacity:0 }],
+        { duration: rand(1400, 2400), delay: rand(0, 1200), fill: 'backwards', easing: 'ease-in' }).finished);
+    }
+    await wait(600);
+    c.wrap.style.opacity = 1;
+    ps.push(c.wrap.animate([
+      { opacity:0, transform:`translateY(${c.H*.7}px) scale(.3) rotate(25deg)`, filter:'drop-shadow(0 0 40px #7cfc00) hue-rotate(60deg)' },
+      { opacity:1, transform:'translateY(-4%) scale(1.06) rotate(-4deg)', filter:'drop-shadow(0 0 30px #7cfc00)', offset:.65 },
+      { opacity:1, transform:'none', filter:'none' }
+    ], { duration: 1500, easing: 'ease-out' }).finished);
+    await Promise.all(ps);
+  },
+
+  /* Heksekjele: boblende gryte, en diger boble vokser opp av den og sprekker – kortet er under */
+  heksekjele: async c => {
+    const r = c.rect, W = Math.max(220, Math.min(r.width * .5, 340)), k = W / 300, Hc = 250 * k;
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const left = cx - W / 2, top = Math.min(c.H - Hc - 8, r.bottom - Hc * .98);
+    const ox = cx, oy = top + 72 * k;                       // midt på væskeoverflaten
+    const D = r.width * .9;                                 // endelig boblediameter
+
+    const glow = mk('div', 'abs');
+    Object.assign(glow.style, { width: W * 2.4 + 'px', height: W * 1.6 + 'px', left: ox - W * 1.2 + 'px', top: oy - W * .8 + 'px',
+      background: 'radial-gradient(closest-side,rgba(124,252,0,.5),rgba(124,252,0,0))' });
+    const pot = mk('div', 'abs');
+    Object.assign(pot.style, { width: W + 'px', height: Hc + 'px', left: left + 'px', top: top + 'px' });
+    pot.innerHTML = `<svg viewBox="0 0 300 250" width="${W}" height="${Hc}" style="display:block;overflow:visible">
+      <defs>
+        <linearGradient id="hkBody" x1="0" x2="1"><stop offset="0" stop-color="#1b1b24"/><stop offset=".35" stop-color="#3a3a48"/><stop offset="1" stop-color="#0a0a0f"/></linearGradient>
+        <radialGradient id="hkLiq" cx=".5" cy=".5" r=".6"><stop offset="0" stop-color="#d4ff8a"/><stop offset=".6" stop-color="#6fe01a"/><stop offset="1" stop-color="#2f8a00"/></radialGradient>
+      </defs>
+      <path d="M95 218 L80 247 L108 232 Z M205 218 L220 247 L192 232 Z" fill="#14141a"/>
+      <circle cx="22" cy="92" r="16" fill="none" stroke="#2a2a35" stroke-width="7"/><circle cx="278" cy="92" r="16" fill="none" stroke="#2a2a35" stroke-width="7"/>
+      <path d="M30 72 C6 150 40 224 150 228 C260 224 294 150 270 72 Z" fill="url(#hkBody)"/>
+      <path d="M52 110 C46 150 60 190 100 208" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="7" stroke-linecap="round"/>
+      <ellipse cx="150" cy="72" rx="126" ry="27" fill="#15151c" stroke="#55556a" stroke-width="6"/>
+      <ellipse cx="150" cy="73" rx="112" ry="20" fill="url(#hkLiq)"/>
+    </svg>`;
+    c.fx.append(glow, pot);
+    glow.animate([{ opacity:.55 },{ opacity:1 },{ opacity:.55 }], { duration: 1100, iterations: Infinity });
+    pot.animate([{ opacity:0, transform:'translateY(40px) scale(.85)' },{ opacity:1, transform:'none' }], { duration: 450, easing:'ease-out', fill:'backwards' });
+
+    // småbobler + damp
+    const small = () => {
+      const s = rand(9, 24) * Math.max(.8, k), b = mk('div', 'bubble');
+      Object.assign(b.style, { width: s + 'px', height: s + 'px', left: ox + rand(-.8, .8) * 108 * k - s / 2 + 'px', top: oy + rand(-8, 9) * k - s / 2 + 'px' });
+      c.fx.append(b);
+      b.animate([{ transform:'scale(0)', opacity:0 },{ transform:'scale(1)', opacity:.95, offset:.55 },{ transform:'translateY(-10px) scale(1.6)', opacity:0 }], { duration: rand(450, 750) }).finished.then(() => b.remove());
+      if (Math.random() < .35) {
+        const w = mk('div', 'wisp'), ws = rand(60, 120);
+        Object.assign(w.style, { width: ws + 'px', height: ws + 'px', left: ox + rand(-90, 90) * k - ws / 2 + 'px', top: oy - ws / 2 + 'px' });
+        c.fx.append(w);
+        w.animate([{ opacity:0, transform:'translate(0,0) scale(.6)' },{ opacity:1, offset:.3 },{ opacity:0, transform:`translate(${rand(-30,30)}px,${-rand(120,220)}px) scale(1.5)` }], { duration: 1500 }).finished.then(() => w.remove());
+      }
+    };
+    const timer = setInterval(small, 110);
+    try {
+      await wait(1000);
+
+      // diger boble vokser opp av gryta
+      const bb = mk('div', 'bigbubble');
+      Object.assign(bb.style, { width: D + 'px', height: D + 'px', left: cx - D / 2 + 'px', top: cy - D / 2 + 'px' });
+      c.fx.append(bb);
+      const dx = ox - cx, dy = oy - cy;
+      await bb.animate([
+        { transform:`translate(${dx}px,${dy}px) scale(.04)` },
+        { transform:`translate(${dx*.4}px,${dy*.4}px) scale(.5,.44)`, offset:.5 },
+        { transform:`translate(${dx*.1}px,${dy*.1}px) scale(.88,.95)`, offset:.8 },
+        { transform:'translate(0,0) scale(.97,1.03)', offset:.92 },
+        { transform:'translate(0,0) scale(1,1)' }
+      ], { duration: 2300, easing: 'ease-in-out', fill: 'forwards' }).finished;
+      // spent, rett før den sprekker
+      await bb.animate([
+        { transform:'scale(1)' },{ transform:'scale(1.04,.97)' },{ transform:'scale(.97,1.04)' },{ transform:'scale(1.06)' },{ transform:'scale(1.1)' }
+      ], { duration: 520, fill: 'forwards' }).finished;
+      clearInterval(timer);
+
+      // POFF
+      bb.remove();
+      const ring = mk('div', 'abs');
+      Object.assign(ring.style, { width: D + 'px', height: D + 'px', left: cx - D / 2 + 'px', top: cy - D / 2 + 'px', borderRadius: '50%', border: '6px solid rgba(225,255,190,.9)', boxShadow: '0 0 30px rgba(124,252,0,.8)' });
+      c.fx.append(ring);
+      const ps = [ring.animate([{ transform:'scale(1.05)', opacity:1 },{ transform:'scale(1.4)', opacity:0 }], { duration: 450, easing:'ease-out', fill:'forwards' }).finished];
+      for (let i = 0; i < 28; i++) {
+        const a = rand(0, Math.PI * 2), sz = rand(8, 28), R = D / 2, d = rand(30, 220);
+        const dr = mk('div', 'bubble');
+        Object.assign(dr.style, { width: sz + 'px', height: sz + 'px', left: cx - sz / 2 + 'px', top: cy - sz / 2 + 'px' });
+        c.fx.append(dr);
+        ps.push(dr.animate([
+          { transform:`translate(${Math.cos(a)*R}px,${Math.sin(a)*R}px) scale(.6)`, opacity:1 },
+          { transform:`translate(${Math.cos(a)*(R+d)}px,${Math.sin(a)*(R+d)}px) scale(1)`, opacity:1, offset:.45 },
+          { transform:`translate(${Math.cos(a)*(R+d*1.15)}px,${Math.sin(a)*(R+d*1.15)+rand(80,200)}px) scale(.7)`, opacity:0 }
+        ], { duration: rand(650, 1000), easing:'ease-out', fill:'forwards' }).finished);
+      }
+      c.wrap.style.opacity = 1;
+      ps.push(c.wrap.animate([
+        { transform:'scale(.7)', filter:'brightness(2.4)' },
+        { transform:'scale(1.05)', filter:'brightness(1.25)', offset:.5 },
+        { transform:'none', filter:'none' }
+      ], { duration: 600, easing:'ease-out' }).finished);
+      ps.push(pot.animate([{ opacity:1 },{ opacity:0 }], { duration: 700, delay: 150, fill:'forwards' }).finished);
+      ps.push(glow.animate([{ opacity:1 },{ opacity:0 }], { duration: 700, delay: 150, fill:'forwards' }).finished);
+      await Promise.all(ps);
+    } finally { clearInterval(timer); }
+  },
+};
+
+/* ---------- Celebration ---------- */
+function celebrate(goal){
+  celebrating = true; updateUI();
+  const o = $('#celebrate'), cv = o.querySelector('canvas');
+  $('#celGoal').textContent = goal.title + ' – ' + goal.prize.toLowerCase() + '!';
+  o.classList.remove('out'); o.hidden = false;
+  const W = cv.width = innerWidth, H = cv.height = innerHeight, x = cv.getContext('2d');
+  const colors = ['#ff7a18','#ffd166','#7cfc00','#b57bff','#ffffff','#ff4d6d'], em = ['🎃','🦇','👻','🍬','🕸️'];
+  const ps = [];
+  const add = (px, py, vx, vy) => ps.push({ x:px, y:py, vx, vy, r:rand(0,6), vr:rand(-.25,.25), s:rand(8,16), c:colors[Math.floor(Math.random()*colors.length)], e: Math.random() < .18 ? em[Math.floor(Math.random()*em.length)] : null });
+  const burst = (px, py, dir) => { for (let i = 0; i < 90; i++) { const a = -Math.PI/2 + dir*rand(0,.9) + rand(-.25,.25), v = rand(10, 26); add(px, py, Math.cos(a)*v, Math.sin(a)*v); } };
+  burst(0, H, 1); burst(W, H, -1);
+  const t0 = performance.now(); let last = 0, closing = false, raf;
+  let nextBurst = 1400;
+  function close(){
+    if (closing) return; closing = true; o.classList.add('out');
+    setTimeout(() => { o.onclick = null; o.hidden = true; cancelAnimationFrame(raf); celebrating = false; updateUI(); }, 420);
+  }
+  o.onclick = () => { if (performance.now() - t0 > 800) close(); };
+  (function loop(now){
+    const t = now - t0;
+    if (now - last > (t < 3600 ? 90 : 160)) { last = now; for (let i = 0; i < (t < 3600 ? 6 : 3); i++) add(rand(0, W), -20, rand(-2, 2), rand(1, 5)); }
+    if (t > nextBurst) { nextBurst += 2800; burst(W*rand(.1,.4), H, 1); burst(W*rand(.6,.9), H, -1); }
+    x.clearRect(0, 0, W, H);
+    for (let i = ps.length - 1; i >= 0; i--) {
+      const p = ps[i]; p.vy += .38; p.vx *= .992; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+      if (p.y > H + 60) { ps.splice(i, 1); continue; }
+      x.save(); x.translate(p.x, p.y); x.rotate(p.r);
+      if (p.e) { x.font = p.s * 2.4 + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(p.e, 0, 0); }
+      else { x.fillStyle = p.c; x.fillRect(-p.s/2, -p.s/4, p.s, p.s/2); }
+      x.restore();
+    }
+    if (!closing) raf = requestAnimationFrame(loop);
+  })(t0);
+}
+
+/* ---------- Start på nytt ---------- */
+$('#restartBtn').onclick = () => { if (!celebrating) { $('#modal').hidden = false; $('#mCancel').focus(); } };
+$('#mCancel').onclick = () => { $('#modal').hidden = true; };
+$('#mOk').onclick = async () => {
+  $('#modal').hidden = true;
+  queue = []; drawn = []; current = null; finished = false; busy = false;
+  resetStage();
+  $('#game').classList.add('hidden');
+  $('#start').classList.remove('hidden');
+  renderLoader();
+};
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#modal').hidden) $('#modal').hidden = true; });
+
+/* Standardbildene: images/01.png … images/36.png */
+const DEFAULT_COUNT = 36;
+function defaultImages(){
+  return Array.from({ length: DEFAULT_COUNT }, (_, k) => {
+    const n = String(k + 1).padStart(2, '0');
+    return { id: 'std' + n, src: `images/${n}.png`, name: `Bilde ${n}`, std: true };
+  });
+}
+images = defaultImages();
+images.forEach(i => { const im = new Image(); im.src = i.src; });   // forhåndslast
+renderLoader();
+</script>
+</body>
+</html>
